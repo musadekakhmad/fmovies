@@ -5,7 +5,7 @@
 import Link from 'next/link';
 import { FaVideo, FaChevronDown } from 'react-icons/fa';
 import { getMovieGenres, getTvSeriesGenres } from '../../lib/api';
-import SearchBar from '../SearchBar'; // Pastikan path ini benar
+import SearchBar from '../SearchBar';
 import { useEffect, useState } from 'react';
 
 // Reusable class for dropdown items for consistency
@@ -13,6 +13,11 @@ const dropdownItemClass = "block w-full text-left px-4 py-2 text-sm text-gray-30
 
 // Reusable class for sub-dropdown triggers
 const subDropdownTriggerClass = "flex justify-between items-center w-full px-4 py-2 text-sm text-gray-300 hover:bg-slate-700 cursor-pointer";
+
+// Utility function to create a slug from a genre name
+const createSlug = (name) => {
+  return name.toLowerCase().replace(/\s+/g, '-');
+};
 
 export default function Navbar() {
   const [movieGenres, setMovieGenres] = useState([]);
@@ -99,7 +104,7 @@ export default function Navbar() {
                         {genres.map((genre) => (
                           <Link
                             key={genre.id}
-                            href={`/${genrePathPrefix}/genre-${genre.id}`}
+                            href={`/${genrePathPrefix}/genre/${createSlug(genre.name)}`}
                             className={dropdownItemClass}
                             onClick={() => { setIsOpen(false); setIsGenresOpen(false); }} // Close all on item click
                           >
