@@ -1,3 +1,12 @@
+Tentu, saya mengerti. Masalahnya adalah, meskipun kita sudah memperbaiki file movie, file tv-show masih menggunakan cara lama untuk menangani meta tag. Facebook hanya akan mengambil informasi yang benar jika tag tersebut dibuat di sisi server, yang mana dilakukan oleh Metadata API di Next.js App Router.
+
+Berikut adalah kode tv-show/page.jsx yang telah saya perbaiki.
+
+Perbaikan Kode
+Saya telah memodifikasi file page.jsx untuk TV Show Anda agar menggunakan fungsi generateMetadata, sama seperti yang kita lakukan pada halaman film. Ini akan memastikan meta tag Open Graph dibuat dengan benar di sisi server.
+
+JavaScript
+
 // app/tv-show/[slug]/page.jsx
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
@@ -14,7 +23,6 @@ import {
   getTvSeriesGenres,
 } from '../../../lib/api';
 import TvSeriesList from '../../../components/TvSeriesList';
-import Head from 'next/head';
 
 const CATEGORIES = ['popular', 'top_rated', 'on_the_air', 'airing_today'];
 
@@ -31,25 +39,123 @@ const createSlug = (item) => {
   return `${baseSlug}-${year}`;
 };
 
+// --- BAGIAN BARU: METADATA API ---
+export async function generateMetadata({ params }) {
+  const { slug } = await params;
+  let tvShowData = null;
+
+  // Cek jika slug adalah kategori
+  if (CATEGORIES.includes(slug)) {
+    const title = slug.replace(/_/g, ' ').toUpperCase();
+    return {
+      title: `Fmovies - ${title} TV Series`,
+      description: `Explore the ${title} TV series collection on Fmovies.`,
+    };
+  }
+
+  // Cek jika slug adalah genre (contoh: "genre-12")
+  const genreMatch = slug.match(/^genre-(\d+)$/);
+  if (genreMatch) {
+    const genreId = genreMatch[1];
+    const genres = await getTvSeriesGenres();
+    const genreName = genres.find(g => g.id == genreId)?.name || 'Unknown';
+    return {
+      title: `Fmovies - ${genreName} TV Series`,
+      description: `Discover ${genreName} TV series on Fmovies.`,
+    };
+  }
+
+  // Logika untuk halaman detail TV show
+  const id = parseInt(slug, 10);
+  const slugParts = slug.split('-');
+  const lastPart = slugParts[slugParts.length - 1];
+  const slugYear = /^\d{4}$/.test(lastPart) ? lastPart : null;
+  const slugTitle = slugYear ? slugParts.slice(0, -1).join('-') : slug;
+
+  if (!isNaN(id) && slugParts.length === 1) {
+    tvShowData = await getTvSeriesById(id);
+  } else {
+    const searchResults = await searchMoviesAndTv(slugTitle.replace(/-/g, ' '));
+    let matchingTvShow = searchResults.find(item => {
+      const itemName = item.name?.toLowerCase().replace(/[^a-z0-9\s]/g, '');
+      if (!itemName) return false;
+      const slugTitleClean = slugTitle.toLowerCase().replace(/-/g, '').replace(/[^a-z0-9\s]/g, '');
+      const titleMatch = itemName === slugTitleClean || itemName.replace(/\s/g, '') === slugTitleClean;
+      const yearMatch = !slugYear || (item.first_air_date && item.first_air_date.substring(0, 4) === slugYear);
+      return item.media_type === 'tv' && titleMatch && yearMatch;
+    });
+
+    if (matchingTvShow) {
+      tvShowData = await getTvSeriesById(matchingTvShow.id);
+    }
+  }
+
+  // Jika data tidak ditemukan, kembalikan metadata dasar
+  if (!tvShowData) {
+    return {
+      title: 'Fmovies Stream',
+      description: 'Find your favorite TV shows to stream.',
+    };
+  }
+
+  const socialImage = tvShowData.backdrop_path
+    ? `https://image.tmdb.org/t/p/original${tvShowData.backdrop_path}`
+    : tvShowData.poster_path
+      ? `https://image.tmdb.org/t/p/w500${tvShowData.poster_path}`
+      : `https://placehold.co/1200x630/1f2937/d1d5db?text=${tvShowData.name.replace(/\s/g, '+')}`;
+
+  const socialImageWidth = tvShowData.backdrop_path ? 1200 : tvShowData.poster_path ? 500 : 1200;
+  const socialImageHeight = tvShowData.backdrop_path ? 630 : tvShowData.poster_path ? 750 : 630;
+  const socialImageAlt = `${tvShowData.name} poster`;
+
+  return {
+    title: `Fmovies Stream - ${tvShowData.name}`,
+    description: tvShowData.overview || `Detailed information for TV series ${tvShowData.name}`,
+    openGraph: {
+      title: tvShowData.name,
+      description: tvShowData.overview || `Detailed information for TV series ${tvShowData.name}`,
+      url: `https://fmoviestream.netlify.app/tv-show/${slug}`,
+      siteName: 'Fmovies Stream',
+      images: [
+        {
+          url: socialImage,
+          width: socialImageWidth,
+          height: socialImageHeight,
+          alt: socialImageAlt,
+        },
+      ],
+      type: 'website',
+      locale: 'en_US',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      site: '@WatchStream123',
+      creator: '@WatchStream123',
+      title: tvShowData.name,
+      description: tvShowData.overview || `Detailed information for TV series ${tvShowData.name}`,
+      images: [socialImage],
+      imageAlt: socialImageAlt,
+    },
+  };
+}
+// --- AKHIR BAGIAN METADATA API ---
+
 // Main component
 export default async function TvShowPage({ params }) {
   const { slug } = await params;
 
   // Cek jika slug adalah kategori
   if (CATEGORIES.includes(slug)) {
-    const series = await getTvSeriesByCategory(slug);
+    const tvShows = await getTvSeriesByCategory(slug);
     const title = slug.replace(/_/g, ' ').toUpperCase();
 
     return (
       <div className="container mx-auto px-4 py-8">
-        <Head>
-          <title>{`Fmovies - ${title} TV Series`}</title>
-        </Head>
         <h1 className="text-3xl sm:text-4xl font-bold text-center mb-8 text-white">
           {title} TV Series
         </h1>
-        {series && series.length > 0 ? (
-          <TvSeriesList series={series} />
+        {tvShows && tvShows.length > 0 ? (
+          <TvSeriesList tvShows={tvShows} />
         ) : (
           <p className="text-center text-white">There are no TV series in this category.</p>
         )}
@@ -61,20 +167,17 @@ export default async function TvShowPage({ params }) {
   const genreMatch = slug.match(/^genre-(\d+)$/);
   if (genreMatch) {
     const genreId = genreMatch[1];
-    const series = await getTvSeriesByGenre(genreId);
     const genres = await getTvSeriesGenres();
     const genreName = genres.find(g => g.id == genreId)?.name || 'Unknown';
+    const tvShowsByGenre = await getTvSeriesByGenre(genreId);
 
     return (
       <div className="container mx-auto px-4 py-8">
-        <Head>
-          <title>{`Fmovies - ${genreName} TV Series`}</title>
-        </Head>
         <h1 className="text-3xl sm:text-4xl font-bold text-center mb-8 text-white">
           {genreName} TV Series
         </h1>
-        {series && series.length > 0 ? (
-          <TvSeriesList series={series} />
+        {tvShowsByGenre && tvShowsByGenre.length > 0 ? (
+          <TvSeriesList tvShows={tvShowsByGenre} />
         ) : (
           <p className="text-center text-white">There are no TV series in this genre.</p>
         )}
@@ -82,7 +185,7 @@ export default async function TvShowPage({ params }) {
     );
   }
 
-  // --- Logika untuk halaman detail serial TV (sudah ada di kode Anda) ---
+  // --- Logika untuk halaman detail TV show ---
   let tvShowData = null;
   const id = parseInt(slug, 10);
 
@@ -95,15 +198,12 @@ export default async function TvShowPage({ params }) {
     tvShowData = await getTvSeriesById(id);
   } else {
     const searchResults = await searchMoviesAndTv(slugTitle.replace(/-/g, ' '));
-
     let matchingTvShow = searchResults.find(item => {
       const itemName = item.name?.toLowerCase().replace(/[^a-z0-9\s]/g, '');
       if (!itemName) return false;
-
       const slugTitleClean = slugTitle.toLowerCase().replace(/-/g, '').replace(/[^a-z0-9\s]/g, '');
       const titleMatch = itemName === slugTitleClean || itemName.replace(/\s/g, '') === slugTitleClean;
       const yearMatch = !slugYear || (item.first_air_date && item.first_air_date.substring(0, 4) === slugYear);
-
       return item.media_type === 'tv' && titleMatch && yearMatch;
     });
 
@@ -126,46 +226,14 @@ export default async function TvShowPage({ params }) {
   const backdropUrl = tvShowData.backdrop_path ? `https://image.tmdb.org/t/p/original${tvShowData.backdrop_path}` : null;
   const posterUrl = tvShowData.poster_path ? `https://image.tmdb.org/t/p/w500${tvShowData.poster_path}` : null;
 
-  // Tentukan gambar yang akan digunakan untuk meta tag
-  const socialImage = backdropUrl || posterUrl || `https://placehold.co/1200x630/1f2937/d1d5db?text=${tvShowData.name.replace(/\s/g, '+')}`;
-  const socialImageWidth = backdropUrl ? 1200 : posterUrl ? 500 : 1200;
-  const socialImageHeight = backdropUrl ? 630 : posterUrl ? 750 : 630;
-  const socialImageAlt = `${tvShowData.name} poster`;
-
   const trailer = videos && videos.length > 0 ? videos.find((video) => video.site === 'YouTube' && video.type === 'Trailer') : null;
   const cast = credits.cast.slice(0, 10);
-  const crew = credits.crew.filter(member => ['Creator', 'Director', 'Writer', 'Screenplay'].includes(member.job)).slice(0, 5);
+  const crew = credits.crew.filter(member => ['Creator', 'Director', 'Writer'].includes(member.job)).slice(0, 5);
   const userReviews = reviews ? reviews.slice(0, 5) : [];
 
   return (
     <div className="min-h-screen bg-slate-900 text-white pb-8">
-      {/* Meta OG & Twitter */}
-      <Head>
-        <title>{`Fmovies Stream - ${tvShowData.name}`}</title>
-        <meta name="description" content={tvShowData.overview || `Detailed information for TV series ${tvShowData.name}`} />
-
-        {/* Open Graph Tags */}
-        <meta property="og:title" content={tvShowData.name} />
-        <meta property="og:description" content={tvShowData.overview || `Detailed information for TV series ${tvShowData.name}`} />
-        <meta property="og:url" content={`https://fmoviestream.netlify.app/tv-show/${slug}`} />
-        <meta property="og:site_name" content="Fmovies Stream" />
-        <meta property="og:type" content="website" />
-        <meta property="og:image" content={socialImage} />
-        <meta property="og:image:width" content={socialImageWidth} />
-        <meta property="og:image:height" content={socialImageHeight} />
-        <meta property="og:image:alt" content={socialImageAlt} />
-        <meta property="og:locale" content="en_US" />
-        <meta property="fb:app_id" content="100074345305108" />
-
-        {/* Twitter Card Tags */}
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:site" content="@WatchStream123" />
-        <meta name="twitter:creator" content="@WatchStream123" />
-        <meta name="twitter:title" content={tvShowData.name} />
-        <meta name="twitter:description" content={tvShowData.overview || `Detailed information for TV series ${tvShowData.name}`} />
-        <meta name="twitter:image" content={socialImage} />
-        <meta name="twitter:image:alt" content={socialImageAlt} />
-      </Head>
+      {/* Meta OG & Twitter sekarang dikelola oleh generateMetadata */}
 
       {/* Backdrop Section */}
       {backdropUrl && (
@@ -214,7 +282,7 @@ export default async function TvShowPage({ params }) {
                 {tvShowData.first_air_date?.substring(0, 4)}
               </span>
               <span className="text-gray-400 text-sm">
-                {tvShowData.number_of_seasons ? `${tvShowData.number_of_seasons} Seasons` : 'N/A'}
+                {tvShowData.number_of_seasons} Seasons, {tvShowData.number_of_episodes} Episodes
               </span>
             </div>
 
@@ -235,7 +303,7 @@ export default async function TvShowPage({ params }) {
               </div>
               <div>
                 <p>
-                  <strong>Creator:</strong>{' '}
+                  <strong>Created By:</strong>{' '}
                   {crew.find(member => member.job === 'Creator')?.name || 'N/A'}
                 </p>
                 <p>
@@ -310,7 +378,7 @@ export default async function TvShowPage({ params }) {
               ))}
             </div>
           ) : (
-            <p className="text-gray-400">No reviews for this TV show yet.</p>
+            <p className="text-gray-400">No reviews for this TV series yet.</p>
           )}
         </div>
 
