@@ -51,7 +51,7 @@ export default async function TvShowPage({ params }) {
         {series && series.length > 0 ? (
           <TvSeriesList series={series} />
         ) : (
-          <p className="text-center text-white">Tidak ada serial TV di kategori ini.</p>
+          <p className="text-center text-white">There are no TV series in this category.</p>
         )}
       </div>
     );
@@ -76,7 +76,7 @@ export default async function TvShowPage({ params }) {
         {series && series.length > 0 ? (
           <TvSeriesList series={series} />
         ) : (
-          <p className="text-center text-white">Tidak ada serial TV di genre ini.</p>
+          <p className="text-center text-white">There are no TV series in this genre.</p>
         )}
       </div>
     );
@@ -123,8 +123,14 @@ export default async function TvShowPage({ params }) {
     getSimilarTvSeries(tvShowData.id),
   ]);
 
-  const backdropUrl = tvShowData.backdrop_path ? `https://image.tmdb.org/t/p/original${tvShowData.backdrop_path}` : tvShowData.poster_path ? `https://image.tmdb.org/t/p/original${tvShowData.poster_path}` : null;
+  const backdropUrl = tvShowData.backdrop_path ? `https://image.tmdb.org/t/p/original${tvShowData.backdrop_path}` : null;
   const posterUrl = tvShowData.poster_path ? `https://image.tmdb.org/t/p/w500${tvShowData.poster_path}` : null;
+
+  // Tentukan gambar yang akan digunakan untuk meta tag
+  const socialImage = backdropUrl || posterUrl || `https://placehold.co/1200x630/1f2937/d1d5db?text=${tvShowData.name.replace(/\s/g, '+')}`;
+  const socialImageWidth = backdropUrl ? 1200 : posterUrl ? 500 : 1200;
+  const socialImageHeight = backdropUrl ? 630 : posterUrl ? 750 : 630;
+  const socialImageAlt = `${tvShowData.name} poster`;
 
   const trailer = videos && videos.length > 0 ? videos.find((video) => video.site === 'YouTube' && video.type === 'Trailer') : null;
   const cast = credits.cast.slice(0, 10);
@@ -133,6 +139,34 @@ export default async function TvShowPage({ params }) {
 
   return (
     <div className="min-h-screen bg-slate-900 text-white pb-8">
+      {/* Meta OG & Twitter */}
+      <Head>
+        <title>{`Fmovies Stream - ${tvShowData.name}`}</title>
+        <meta name="description" content={tvShowData.overview || `Detailed information for TV series ${tvShowData.name}`} />
+
+        {/* Open Graph Tags */}
+        <meta property="og:title" content={tvShowData.name} />
+        <meta property="og:description" content={tvShowData.overview || `Detailed information for TV series ${tvShowData.name}`} />
+        <meta property="og:url" content={`https://fmoviestream.netlify.app/tv-show/${slug}`} />
+        <meta property="og:site_name" content="Fmovies Stream" />
+        <meta property="og:type" content="website" />
+        <meta property="og:image" content={socialImage} />
+        <meta property="og:image:width" content={socialImageWidth} />
+        <meta property="og:image:height" content={socialImageHeight} />
+        <meta property="og:image:alt" content={socialImageAlt} />
+        <meta property="og:locale" content="en_US" />
+        <meta property="fb:app_id" content="100074345305108" />
+
+        {/* Twitter Card Tags */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:site" content="@WatchStream123" />
+        <meta name="twitter:creator" content="@WatchStream123" />
+        <meta name="twitter:title" content={tvShowData.name} />
+        <meta name="twitter:description" content={tvShowData.overview || `Detailed information for TV series ${tvShowData.name}`} />
+        <meta name="twitter:image" content={socialImage} />
+        <meta name="twitter:image:alt" content={socialImageAlt} />
+      </Head>
+
       {/* Backdrop Section */}
       {backdropUrl && (
         <div className="relative h-64 sm:h-96 md:h-[500px] overflow-hidden">
@@ -324,11 +358,11 @@ export default async function TvShowPage({ params }) {
             </div>
           </div>
         )}
-		
+
 		{/* Bottom Stream Button */}
         <div className="mt-12 text-center">
              <a href={`/tv-show/${slug}/stream`}>
-              <button className="bg-blue-600 hover:bg-red-600 text-white font-bold py-4 px-10 rounded-lg text-xl transition-transform transform hover:scale-105 shadow-lg">
+              <button className="bg-blue-700 hover:bg-red-700 text-white font-bold py-4 px-10 rounded-lg text-xl transition-transform transform hover:scale-105 shadow-lg">
                 🎬 Stream Now
               </button>
             </a>
