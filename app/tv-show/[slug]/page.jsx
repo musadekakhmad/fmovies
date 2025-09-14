@@ -44,17 +44,39 @@ export async function generateMetadata({ params }) {
     };
   }
 
-  // Cek jika slug adalah genre (contoh: "genre-12")
-  const genreMatch = slug.match(/^genre-(\d+)$/);
-  if (genreMatch) {
-    const genreId = genreMatch[1];
+  // --- LOGIKA PERBAIKAN UNTUK GENRE (BERDASARKAN NAMA DAN ID) ---
+  const genreMatchById = slug.match(/^genre-(\d+)$/);
+  const genreMatchByName = slug.match(/^genre-(.*)$/);
+
+  if (genreMatchById || genreMatchByName) {
     const genres = await getTvSeriesGenres();
-    const genreName = genres.find(g => g.id == genreId)?.name || 'Unknown';
+    let genreId = null;
+    let genreName = 'Unknown';
+
+    if (genreMatchById) {
+      genreId = genreMatchById[1];
+      genreName = genres.find(g => g.id == genreId)?.name || 'Unknown';
+    } else if (genreMatchByName) {
+      const slugName = genreMatchByName[1].replace(/-/g, ' ').toLowerCase();
+      const matchedGenre = genres.find(g => g.name.toLowerCase() === slugName);
+      if (matchedGenre) {
+        genreId = matchedGenre.id;
+        genreName = matchedGenre.name;
+      } else {
+        // Jika nama tidak ditemukan, kembalikan metadata dasar
+        return {
+          title: 'Fmovies Stream',
+          description: 'Find your favorite TV shows to stream.',
+        };
+      }
+    }
+
     return {
       title: `Fmovies - ${genreName} TV Series`,
       description: `Discover ${genreName} TV series on Fmovies.`,
     };
   }
+  // --- AKHIR LOGIKA PERBAIKAN ---
 
   // Logika untuk halaman detail TV show
   const id = parseInt(slug, 10);
@@ -154,12 +176,28 @@ export default async function TvShowPage({ params }) {
     );
   }
 
-  // Cek jika slug adalah genre (contoh: "genre-12")
-  const genreMatch = slug.match(/^genre-(\d+)$/);
-  if (genreMatch) {
-    const genreId = genreMatch[1];
+  // --- LOGIKA PERBAIKAN UNTUK GENRE (BERDASARKAN NAMA DAN ID) ---
+  const genreMatchById = slug.match(/^genre-(\d+)$/);
+  const genreMatchByName = slug.match(/^genre-(.*)$/);
+  if (genreMatchById || genreMatchByName) {
     const genres = await getTvSeriesGenres();
-    const genreName = genres.find(g => g.id == genreId)?.name || 'Unknown';
+    let genreId = null;
+    let genreName = 'Unknown';
+    if (genreMatchById) {
+      genreId = genreMatchById[1];
+      genreName = genres.find(g => g.id == genreId)?.name || 'Unknown';
+    } else if (genreMatchByName) {
+      const slugName = genreMatchByName[1].replace(/-/g, ' ').toLowerCase();
+      const matchedGenre = genres.find(g => g.name.toLowerCase() === slugName);
+      if (matchedGenre) {
+        genreId = matchedGenre.id;
+        genreName = matchedGenre.name;
+      } else {
+        // Jika nama tidak ditemukan, tampilkan not found
+        notFound();
+      }
+    }
+
     const tvShowsByGenre = await getTvSeriesByGenre(genreId);
 
     return (
@@ -175,6 +213,7 @@ export default async function TvShowPage({ params }) {
       </div>
     );
   }
+  // --- AKHIR LOGIKA PERBAIKAN ---
 
   // --- Logika untuk halaman detail TV show ---
   let tvShowData = null;
