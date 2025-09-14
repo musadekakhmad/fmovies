@@ -19,10 +19,8 @@ export const metadata = {
         alt: 'Fmovies Stream - Free HD Movies, TV Shows and Web Series',
       },
     ],
-    locale: 'id_ID',
+    locale: 'en_US',
     type: 'website',
-    // Properti yang diperlukan untuk Facebook Debugger
-    appId: '100074345305108',
   },
   twitter: {
     card: 'summary_large_image',
@@ -40,7 +38,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="id">
+    <html lang="en">
       <body>
         <AdsterraLayoutWrapper>
           <div className="flex flex-col min-h-screen bg-slate-900">
@@ -52,7 +50,7 @@ export default function RootLayout({ children }) {
             </main>
             <footer className="w-full max-w-7xl mx-auto px-4 py-8">
               {/* Tempatkan div Native Banner di sini, sebelum Footer */}
-              <div id="container-4ba514b084f164a6f818e4497b4f33bc"></div>
+              <div id="container-ce4c42ba51eddb0024dfa25613d99fda"></div>
               <Footer />
             </footer>
           </div>
