@@ -1,8 +1,7 @@
 // app/movie/[slug]/page.jsx
-
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
-import { FaYoutube, FaUserCircle, FaStar } from 'react-icons/fa';
+import { FaYoutube, FaUserCircle, FaStar, FaInfoCircle } from 'react-icons/fa';
 import {
   getMovieById,
   getMovieVideos,
@@ -11,20 +10,19 @@ import {
   searchMoviesAndTv,
   getSimilarMovies,
   getMoviesByCategory,
-  getMoviesByGenre,
   getMovieGenres,
 } from '../../../lib/api';
 import MovieList from '../../../components/MovieList';
-import Head from 'next/head';
+import TvSeriesList from '../../../components/TvSeriesList';
 
-const CATEGORIES = ['popular', 'now_playing', 'upcoming', 'top_rated'];
+const CATEGORIES = ['now_playing', 'popular', 'top_rated', 'upcoming'];
 
 // Utility function to create a slug from a movie title
 const createSlug = (item) => {
   const title = item.title;
   if (!title) return '';
   const baseSlug = title.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').trim();
-  
+
   let year = '';
   if (item.release_date) {
     year = item.release_date.substring(0, 4);
@@ -32,9 +30,109 @@ const createSlug = (item) => {
   return `${baseSlug}-${year}`;
 };
 
+// --- BAGIAN METADATA API ---
+export async function generateMetadata({ params }) {
+  const { slug } = await params; // PERBAIKAN DI SINI
+  let movieData = null;
+
+  // Cek jika slug adalah kategori
+  if (CATEGORIES.includes(slug)) {
+    const title = slug.replace(/_/g, ' ').toUpperCase();
+    return {
+      title: `Fmovies - ${title} Movies`,
+      description: `Explore the ${title} movies collection on Fmovies.`,
+    };
+  }
+
+  // Cek jika slug adalah genre (contoh: "genre-12")
+  const genreMatch = slug.match(/^genre-(\d+)$/);
+  if (genreMatch) {
+    const genreId = genreMatch[1];
+    const genres = await getMovieGenres();
+    const genreName = genres.find(g => g.id == genreId)?.name || 'Unknown';
+    return {
+      title: `Fmovies - ${genreName} Movies`,
+      description: `Discover ${genreName} movies on Fmovies.`,
+    };
+  }
+
+  // Logika untuk halaman detail film
+  const id = parseInt(slug, 10);
+  const slugParts = slug.split('-');
+  const lastPart = slugParts[slugParts.length - 1];
+  const slugYear = /^\d{4}$/.test(lastPart) ? lastPart : null;
+  const slugTitle = slugYear ? slugParts.slice(0, -1).join('-') : slug;
+
+  if (!isNaN(id) && slugParts.length === 1) {
+    movieData = await getMovieById(id);
+  } else {
+    const searchResults = await searchMoviesAndTv(slugTitle.replace(/-/g, ' '));
+    let matchingMovie = searchResults.find(item => {
+      const itemName = item.title?.toLowerCase().replace(/[^a-z0-9\s]/g, '');
+      if (!itemName) return false;
+      const slugTitleClean = slugTitle.toLowerCase().replace(/-/g, '').replace(/[^a-z0-9\s]/g, '');
+      const titleMatch = itemName === slugTitleClean || itemName.replace(/\s/g, '') === slugTitleClean;
+      const yearMatch = !slugYear || (item.release_date && item.release_date.substring(0, 4) === slugYear);
+      return item.media_type === 'movie' && titleMatch && yearMatch;
+    });
+    if (matchingMovie) {
+      movieData = await getMovieById(matchingMovie.id);
+    }
+  }
+
+  // Jika data tidak ditemukan, kembalikan metadata dasar
+  if (!movieData) {
+    return {
+      title: 'Fmovies Stream',
+      description: 'Find your favorite movies to stream.',
+    };
+  }
+
+  const socialImage = movieData.backdrop_path
+    ? `https://image.tmdb.org/t/p/original${movieData.backdrop_path}`
+    : movieData.poster_path
+      ? `https://image.tmdb.org/t/p/w500${movieData.poster_path}`
+      : `https://placehold.co/1200x630/1f2937/d1d5db?text=${movieData.title.replace(/\s/g, '+')}`;
+  
+  const socialImageWidth = movieData.backdrop_path ? 1200 : movieData.poster_path ? 500 : 1200;
+  const socialImageHeight = movieData.backdrop_path ? 630 : movieData.poster_path ? 750 : 630;
+  const socialImageAlt = `${movieData.title} poster`;
+
+  return {
+    title: `Fmovies Stream - ${movieData.title}`,
+    description: movieData.overview || `Detailed information for movie ${movieData.title}`,
+    openGraph: {
+      title: movieData.title,
+      description: movieData.overview || `Detailed information for movie ${movieData.title}`,
+      url: `https://fmoviestream.netlify.app/movie/${slug}`,
+      siteName: 'Fmovies Stream',
+      images: [
+        {
+          url: socialImage,
+          width: socialImageWidth,
+          height: socialImageHeight,
+          alt: socialImageAlt,
+        },
+      ],
+      type: 'website',
+      locale: 'en_US',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      site: '@WatchStream123',
+      creator: '@WatchStream123',
+      title: movieData.title,
+      description: movieData.overview || `Detailed information for movie ${movieData.title}`,
+      images: [socialImage],
+      imageAlt: socialImageAlt,
+    },
+  };
+}
+// --- AKHIR BAGIAN METADATA API ---
+
 // Main component
 export default async function MoviePage({ params }) {
-  const { slug } = await params;
+  const { slug } = await params; // PERBAIKAN DI SINI
 
   // Cek jika slug adalah kategori
   if (CATEGORIES.includes(slug)) {
@@ -43,9 +141,6 @@ export default async function MoviePage({ params }) {
 
     return (
       <div className="container mx-auto px-4 py-8">
-        <Head>
-          <title>{`Fmovies - ${title} Movies`}</title>
-        </Head>
         <h1 className="text-3xl sm:text-4xl font-bold text-center mb-8 text-white">
           {title} Movies
         </h1>
@@ -58,32 +153,29 @@ export default async function MoviePage({ params }) {
     );
   }
 
-  // Cek jika slug adalah genre (contoh: "genre-28")
+  // Cek jika slug adalah genre (contoh: "genre-12")
   const genreMatch = slug.match(/^genre-(\d+)$/);
   if (genreMatch) {
     const genreId = genreMatch[1];
-    const movies = await getMoviesByGenre(genreId);
-    const genres = await getMovieGenres();
-    const genreName = genres.find(g => g.id == genreId)?.name || 'Unknown';
+    const movies = await getMovieGenres();
+    const genreName = movies.find(g => g.id == genreId)?.name || 'Unknown';
+    const moviesByGenre = await getMoviesByGenre(genreId);
 
     return (
       <div className="container mx-auto px-4 py-8">
-        <Head>
-          <title>{`Fmovies - ${genreName} Movies`}</title>
-        </Head>
         <h1 className="text-3xl sm:text-4xl font-bold text-center mb-8 text-white">
           {genreName} Movies
         </h1>
-        {movies && movies.length > 0 ? (
-          <MovieList movies={movies} />
+        {moviesByGenre && moviesByGenre.length > 0 ? (
+          <MovieList movies={moviesByGenre} />
         ) : (
-          <p className="text-center text-white">There are no films in this genre.</p>
+          <p className="text-center text-white">There are no movies in this genre.</p>
         )}
       </div>
     );
   }
 
-  // --- Logika untuk halaman detail film (sudah ada di kode Anda) ---
+  // --- Logika untuk halaman detail film ---
   let movieData = null;
   const id = parseInt(slug, 10);
 
@@ -96,15 +188,12 @@ export default async function MoviePage({ params }) {
     movieData = await getMovieById(id);
   } else {
     const searchResults = await searchMoviesAndTv(slugTitle.replace(/-/g, ' '));
-    
     let matchingMovie = searchResults.find(item => {
-      const itemTitle = item.title?.toLowerCase().replace(/[^a-z0-9\s]/g, '');
-      if (!itemTitle) return false;
-
+      const itemName = item.title?.toLowerCase().replace(/[^a-z0-9\s]/g, '');
+      if (!itemName) return false;
       const slugTitleClean = slugTitle.toLowerCase().replace(/-/g, '').replace(/[^a-z0-9\s]/g, '');
-      const titleMatch = itemTitle === slugTitleClean || itemTitle.replace(/\s/g, '') === slugTitleClean;
+      const titleMatch = itemName === slugTitleClean || itemName.replace(/\s/g, '') === slugTitleClean;
       const yearMatch = !slugYear || (item.release_date && item.release_date.substring(0, 4) === slugYear);
-      
       return item.media_type === 'movie' && titleMatch && yearMatch;
     });
 
@@ -127,12 +216,6 @@ export default async function MoviePage({ params }) {
   const backdropUrl = movieData.backdrop_path ? `https://image.tmdb.org/t/p/original${movieData.backdrop_path}` : null;
   const posterUrl = movieData.poster_path ? `https://image.tmdb.org/t/p/w500${movieData.poster_path}` : null;
 
-  // Tentukan gambar yang akan digunakan untuk meta tag
-  const socialImage = backdropUrl || posterUrl || `https://placehold.co/1200x630/1f2937/d1d5db?text=${movieData.title.replace(/\s/g, '+')}`;
-  const socialImageWidth = backdropUrl ? 1200 : posterUrl ? 500 : 1200;
-  const socialImageHeight = backdropUrl ? 630 : posterUrl ? 750 : 630;
-  const socialImageAlt = `${movieData.title} poster`;
-
   const trailer = videos && videos.length > 0 ? videos.find((video) => video.site === 'YouTube' && video.type === 'Trailer') : null;
   const cast = credits.cast.slice(0, 10);
   const crew = credits.crew.filter(member => ['Director', 'Writer', 'Screenplay'].includes(member.job)).slice(0, 5);
@@ -140,34 +223,7 @@ export default async function MoviePage({ params }) {
 
   return (
     <div className="min-h-screen bg-slate-900 text-white pb-8">
-      {/* Meta OG & Twitter */}
-      <Head>
-        <title>{`Fmovies Stream - ${movieData.title}`}</title>
-        <meta name="description" content={movieData.overview || `Detailed information for movies ${movieData.title}`} />
-
-        {/* Open Graph Tags */}
-        <meta property="og:title" content={movieData.title} />
-        <meta property="og:description" content={movieData.overview || `Detailed information for movies ${movieData.title}`} />
-        <meta property="og:url" content={`https://fmoviestream.netlify.app/movie/${slug}`} />
-        <meta property="og:site_name" content="Fmovies Stream" />
-        <meta property="og:type" content="website" />
-        <meta property="og:image" content={socialImage} />
-        <meta property="og:image:width" content={socialImageWidth} />
-        <meta property="og:image:height" content={socialImageHeight} />
-        <meta property="og:image:alt" content={socialImageAlt} />
-        <meta property="og:locale" content="en_US" />
-        <meta property="fb:app_id" content="100074345305108" />
-
-        {/* Twitter Card Tags */}
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:site" content="@WatchStream123" />
-        <meta name="twitter:creator" content="@WatchStream123" />
-        <meta name="twitter:title" content={movieData.title} />
-        <meta name="twitter:description" content={movieData.overview || `Detailed information for movies ${movieData.title}`} />
-        <meta name="twitter:image" content={socialImage} />
-        <meta name="twitter:image:alt" content={socialImageAlt} />
-      </Head>
-
+      {/* Meta OG & Twitter sekarang dikelola oleh generateMetadata */}
       {/* Backdrop Section */}
       {backdropUrl && (
         <div className="relative h-64 sm:h-96 md:h-[500px] overflow-hidden">
@@ -212,10 +268,10 @@ export default async function MoviePage({ params }) {
                 {movieData.vote_average.toFixed(1)} / 10
               </span>
               <span className="text-gray-400 text-sm">
-                {movieData.runtime ? `${Math.floor(movieData.runtime / 60)}h ${movieData.runtime % 60}m` : 'N/A'}
+                {movieData.release_date?.substring(0, 4)}
               </span>
               <span className="text-gray-400 text-sm">
-                {movieData.release_date?.substring(0, 4)}
+                {movieData.runtime ? `${Math.floor(movieData.runtime / 60)}h ${movieData.runtime % 60}m` : 'N/A'}
               </span>
             </div>
 
@@ -360,10 +416,10 @@ export default async function MoviePage({ params }) {
           </div>
         )}
 		
-		{/* Bottom Streaming Button */}
+		{/* Bottom Stream Button */}
         <div className="mt-12 text-center">
              <a href={`/movie/${slug}/stream`}>
-              <button className="bg-blue-700 hover:bg-green-700 text-white font-bold py-4 px-10 rounded-lg text-xl transition-transform transform hover:scale-105 shadow-lg">
+              <button className="bg-blue-700 hover:bg-red-700 text-white font-bold py-4 px-10 rounded-lg text-xl transition-transform transform hover:scale-105 shadow-lg">
                 🎬 Stream Now
               </button>
             </a>
