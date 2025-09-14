@@ -1,12 +1,3 @@
-Tentu, saya mengerti. Masalahnya adalah, meskipun kita sudah memperbaiki file movie, file tv-show masih menggunakan cara lama untuk menangani meta tag. Facebook hanya akan mengambil informasi yang benar jika tag tersebut dibuat di sisi server, yang mana dilakukan oleh Metadata API di Next.js App Router.
-
-Berikut adalah kode tv-show/page.jsx yang telah saya perbaiki.
-
-Perbaikan Kode
-Saya telah memodifikasi file page.jsx untuk TV Show Anda agar menggunakan fungsi generateMetadata, sama seperti yang kita lakukan pada halaman film. Ini akan memastikan meta tag Open Graph dibuat dengan benar di sisi server.
-
-JavaScript
-
 // app/tv-show/[slug]/page.jsx
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
