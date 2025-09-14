@@ -6,7 +6,7 @@ export default function About() {
   return (
     <div className="container mx-auto px-4 py-8 text-gray-300">
       <div className="bg-gray-800 p-8 rounded-xl shadow-lg">
-        <h1 className="text-3xl md:text-4xl font-extrabold text-center mb-4 text-orange-300">
+        <h1 className="text-2xl md:text-3xl font-extrabold text-center mb-4 text-orange-300">
           Fmovies Stream | Free HD Movies, TV Shows and Web Series
         </h1>
         <div className="mb-8 flex justify-center">
