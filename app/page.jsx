@@ -1,8 +1,10 @@
 // app/page.jsx
 
+export const dynamic = 'force-dynamic';
+
 import { getTrendingMoviesDaily, getTrendingTvSeriesDaily } from '../lib/api';
 import MovieList from '../components/MovieList';
-import TvSeriesList from '../components/TvSeriesList'; // Assuming you have or will create this component
+import TvSeriesList from '../components/TvSeriesList'; 
 import Head from 'next/head';
 
 export default async function Home() {
