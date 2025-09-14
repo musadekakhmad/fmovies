@@ -1,5 +1,3 @@
-// app/layout.jsx
-
 import './globals.css';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
@@ -8,7 +6,34 @@ import AdsterraLayoutWrapper from '../components/AdsterraLayoutWrapper';
 export const metadata = {
   title: 'Fmovies Stream | Free HD Movies, TV Shows and Web Series',
   description: 'Fmovies Stream is your one-stop destination for free movies, TV shows, and web series. Download thousands of titles in HD quality, with unlimited access to the latest blockbusters and trending series. Start your free entertainment journey today! ',
-  // Metadata spesifik seperti openGraph dan twitter dipindahkan ke halaman masing-masing untuk rendering dinamis.
+  openGraph: {
+    title: 'Fmovies Stream | Free HD Movies, TV Shows and Web Series',
+    description: 'Fmovies Stream is your one-stop destination for free movies, TV shows, and web series. Download thousands of titles in HD quality, with unlimited access to the latest blockbusters and trending series. Start your free entertainment journey today! ',
+    url: 'https://fmoviestream.netlify.app',
+    siteName: 'Fmovies Stream',
+    images: [
+      {
+        url: 'https://live.staticflickr.com/65535/54783431146_cea3af132d_b.jpg',
+        width: 1200,
+        height: 630,
+        alt: 'Fmovies Stream - Free HD Movies, TV Shows and Web Series',
+      },
+    ],
+    locale: 'en_US',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    site: '@WatchStream123',
+    creator: '@WatchStream123',
+    title: 'Fmovies Stream | Free HD Movies, TV Shows and Web Series',
+    description: 'Fmovies Stream is your one-stop destination for free movies, TV shows, and web series. Download thousands of titles in HD quality, with unlimited access to the latest blockbusters and trending series. Start your free entertainment journey today!',
+    images: ['https://live.staticflickr.com/65535/54783431146_cea3af132d_b.jpg'],
+  },
+  // Tambahkan tag meta eksplisit untuk Facebook
+  other: {
+    'fb:app_id': '100074345305108',
+  },
 };
 
 export default function RootLayout({ children }) {
