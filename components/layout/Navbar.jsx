@@ -104,7 +104,8 @@ export default function Navbar() {
                         {genres.map((genre) => (
                           <Link
                             key={genre.id}
-                            href={`/${genrePathPrefix}/genre/${createSlug(genre.name)}`}
+                            // BARIS YANG TELAH DIPERBAIKI: Mengubah `/genre/` menjadi `/genre-`
+                            href={`/${genrePathPrefix}/genre-${createSlug(genre.name)}`}
                             className={dropdownItemClass}
                             onClick={() => { setIsOpen(false); setIsGenresOpen(false); }} // Close all on item click
                           >
